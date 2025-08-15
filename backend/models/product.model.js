@@ -15,6 +15,11 @@ const productSchema = new mongoose.Schema({
         type: String,  
         required: true,
     },
+    sellerId: {
+		type: mongoose.Schema.Types.ObjectId,
+		ref: "User", // Yeh User model se link karega
+		required: true,
+	},
 }, {
     timestamps: true, //createdAt and updatedAt fields
 });

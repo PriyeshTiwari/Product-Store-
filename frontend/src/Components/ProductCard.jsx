@@ -1,157 +1,69 @@
-import { DeleteIcon, EditIcon } from "@chakra-ui/icons";
-import {
-  Box,
-  Button,
-  Heading,
-  HStack,
-  IconButton,
-  Image,
-  Input,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Text,
-  useColorModeValue,
-  useDisclosure,
-  useToast,
-  VStack,
-} from "@chakra-ui/react";
-import { useState } from "react";
+import { Box, Button, Heading, Image, Text, useToast, HStack } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom"; // useNavigate import karo
+import useAuthStore from "../Store/useAuthStore";
+import useCartStore from "../Store/useCartStore";
+// Admin features ke liye imports (agar zaroorat ho)
+import { EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { IconButton } from "@chakra-ui/react";
 import { useProductStore } from "../Store/product";
 
-const ProductCard = ({ product }) => {
-  const [updatedProduct, setUpdatedProduct] = useState(product);
-  const textColor = useColorModeValue("gray.600", "gray.200");
-  const bg = useColorModeValue("white", "gray.800");
+const ProductCard = ({ product, view = "customer" }) => {
+	const { user } = useAuthStore();
+	const { addToCart } = useCartStore();
+	const { deleteProduct } = useProductStore();
+	const navigate = useNavigate(); // navigate function nikalo
+	const toast = useToast();
 
-  const { deleteProduct, updateProduct } = useProductStore();
-  const toast = useToast();
+	const handleAddToCart = async () => {
+		await addToCart(product._id);
+		toast({ title: "Success", description: "Product added to cart.", status: "success" });
+	};
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+	// NAYA FUNCTION: Buy Now ke liye
+	const handleBuyNow = () => {
+		// Checkout page par jaao aur product ki details state mein pass karo
+		navigate("/checkout", { state: { productToBuy: product } });
+	};
 
-  // Price formatting with ₹ symbol (no conversion)
-  const formattedPrice = product.price.toLocaleString("en-IN", {
-    style: "currency",
-    currency: "INR",
-    currencyDisplay: "symbol",
-  });
+	const handleDelete = async () => {
+		await deleteProduct(product._id);
+		toast({ title: "Success", description: "Product deleted." });
+	};
 
-  const handleDeleteProduct = async (pid) => {
-    const { success, message } = await deleteProduct(pid);
-    if (!success) {
-      toast({
-        title: "Error",
-        description: message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: message,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
+	return (
+		<Box shadow='md' rounded='lg' overflow='hidden' bg='gray.700'>
+			<Image src={product.image} alt={product.name} h={64} w='full' objectFit='cover' />
+			<Box p={4}>
+				<Heading as='h3' size='md' mb={2}>
+					{product.name}
+				</Heading>
+				<Text fontWeight='bold' fontSize='xl' mb={4}>
+					₹{product.price.toLocaleString("en-IN")}
+				</Text>
 
-  const handleUpdateProduct = async () => {
-    const { success, message } = await updateProduct(product._id, updatedProduct);
-    onClose();
-    if (!success) {
-      toast({
-        title: "Error",
-        description: message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Product updated successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  return (
-    <Box bg={bg} p={4} rounded="md" shadow="md">
-
-        <Image src={product.image} alt={product.name} h={48} w='full' objectFit='cover' />
-      <Heading size="md" mb={2} color={textColor}>
-        {product.name}
-      </Heading>
-      <Text fontWeight="bold" color={textColor}>
-        {formattedPrice} {/* Rupees symbol with price */}
-      </Text>
-
-      <HStack mt={4} spacing={4}>
-        <IconButton
-          aria-label="Edit Product"
-          icon={<EditIcon />}
-          onClick={onOpen}
-        />
-        <IconButton
-          aria-label="Delete Product"
-          icon={<DeleteIcon />}
-          colorScheme="red"
-          onClick={() => handleDeleteProduct(product._id)}
-        />
-      </HStack>
-
-      {/* Update Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Update Product</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4}>
-              <Input
-                placeholder="Product Name"
-                value={updatedProduct.name}
-                onChange={(e) =>
-                  setUpdatedProduct({ ...updatedProduct, name: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Price"
-                type="number"
-                value={updatedProduct.price}
-                onChange={(e) =>
-                  setUpdatedProduct({ ...updatedProduct, price: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Image URL"
-                value={updatedProduct.image}
-                onChange={(e) =>
-                  setUpdatedProduct({ ...updatedProduct, image: e.target.value })
-                }
-              />
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={handleUpdateProduct}>
-              Update
-            </Button>
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Box>
-  );
+				{user && (
+					<HStack>
+						{view === "customer" && user.role === "customer" && (
+							<>
+								<Button onClick={handleAddToCart} colorScheme='blue' flex='1'>
+									Add to Cart
+								</Button>
+								<Button onClick={handleBuyNow} colorScheme='green' flex='1'>
+									Buy Now
+								</Button>
+							</>
+						)}
+						{view === "seller" && user.role === "seller" && (
+							<>
+								<IconButton icon={<EditIcon />} aria-label='Edit Product' />
+								<IconButton icon={<DeleteIcon />} colorScheme='red' aria-label='Delete Product' onClick={handleDelete} />
+							</>
+						)}
+					</HStack>
+				)}
+			</Box>
+		</Box>
+	);
 };
 
 export default ProductCard;
@@ -179,128 +91,114 @@ export default ProductCard;
 // 	useToast,
 // 	VStack,
 // } from "@chakra-ui/react";
-// import { useProductStore } from "../Store/product";
 // import { useState } from "react";
+// import { useProductStore } from "../Store/product";
+// import useAuthStore from "../Store/useAuthStore";
+// import useCartStore from "../Store/useCartStore"; // Cart store import karo
 
 // const ProductCard = ({ product }) => {
 // 	const [updatedProduct, setUpdatedProduct] = useState(product);
-
-// 	const textColor = useColorModeValue("gray.600", "gray.200");
-// 	const bg = useColorModeValue("white", "gray.800");
-
+// 	const { user } = useAuthStore(); // User ka poora object nikalo
 // 	const { deleteProduct, updateProduct } = useProductStore();
-// 	const toast = useToast();
+// 	const { addToCart } = useCartStore(); // addToCart function nikalo
+	
 // 	const { isOpen, onOpen, onClose } = useDisclosure();
+// 	const toast = useToast();
+// 	const bg = useColorModeValue("white", "gray.800");
+// 	const textColor = useColorModeValue("gray.800", "white");
 
-// 	const handleDeleteProduct = async (pid) => {
-// 		const { success, message } = await deleteProduct(pid);
-// 		if (!success) {
-// 			toast({
-// 				title: "Error",
-// 				description: message,
-// 				status: "error",
-// 				duration: 3000,
-// 				isClosable: true,
-// 			});
-// 		} else {
-// 			toast({
-// 				title: "Success",
-// 				description: message,
-// 				status: "success",
-// 				duration: 3000,
-// 				isClosable: true,
-// 			});
-// 		}
+// 	const formattedPrice = product.price.toLocaleString("en-IN", {
+// 		style: "currency",
+// 		currency: "INR",
+// 	});
+
+// 	// Admin ke liye functions
+// 	const handleDeleteProduct = async () => {
+// 		await deleteProduct(product._id);
+// 		toast({ title: "Success", description: "Product deleted.", status: "success" });
 // 	};
 
-// 	const handleUpdateProduct = async (pid, updatedProduct) => {
-// 		const { success, message } = await updateProduct(pid, updatedProduct);
+// 	const handleUpdateProduct = async () => {
+// 		await updateProduct(product._id, updatedProduct);
 // 		onClose();
-// 		if (!success) {
-// 			toast({
-// 				title: "Error",
-// 				description: message,
-// 				status: "error",
-// 				duration: 3000,
-// 				isClosable: true,
-// 			});
-// 		} else {
-// 			toast({
-// 				title: "Success",
-// 				description: "Product updated successfully",
-// 				status: "success",
-// 				duration: 3000,
-// 				isClosable: true,
-// 			});
-// 		}
+// 		toast({ title: "Success", description: "Product updated.", status: "success" });
+// 	};
+
+// 	// Customer ke liye function
+// 	const handleAddToCart = async () => {
+// 		await addToCart(product._id);
+// 		toast({
+// 			title: "Success!",
+// 			description: `${product.name} has been added to your cart.`,
+// 			status: "success",
+// 			duration: 2000,
+// 			isClosable: true,
+// 			position: "top-right",
+// 		});
 // 	};
 
 // 	return (
-// 		<Box
-// 			shadow='lg'
-// 			rounded='lg'
-// 			overflow='hidden'
-// 			transition='all 0.3s'
-// 			_hover={{ transform: "translateY(-5px)", shadow: "xl" }}
-// 			bg={bg}
-// 		>
-// 			<Image src={product.image} alt={product.name} h={48} w='full' objectFit='cover' />
-
-// 			<Box p={4}>
-// 				<Heading as='h3' size='md' mb={2}>
+// 		<Box bg={bg} shadow='md' rounded='lg' overflow='hidden'>
+// 			<Image src={product.image} alt={product.name} h={64} w='full' objectFit='cover' />
+// 			<Box p={5}>
+// 				<Heading as='h3' size='md' mb={2} color={textColor}>
 // 					{product.name}
 // 				</Heading>
-
-// 				<Text fontWeight='bold' fontSize='xl' color={textColor} mb={4}>
-// 					${product.price}
+// 				<Text fontWeight='bold' fontSize='xl' mb={4} color={textColor}>
+// 					{formattedPrice}
 // 				</Text>
 
-// 				<HStack spacing={2}>
-// 					<IconButton icon={<EditIcon />} onClick={onOpen} colorScheme='blue' />
-// 					<IconButton
-// 						icon={<DeleteIcon />}
-// 						onClick={() => handleDeleteProduct(product._id)}
-// 						colorScheme='red'
-// 					/>
-// 				</HStack>
+// 				{/* YEH HAI MAIN LOGIC */}
+// 				{user && (
+// 					<Box mt={4}>
+// 						{/* Agar user ADMIN hai, toh Edit/Delete buttons dikhao */}
+// 						{user.role === 'admin' && (
+// 							<HStack>
+// 								<IconButton aria-label='Edit Product' icon={<EditIcon />} onClick={onOpen} />
+// 								<IconButton
+// 									aria-label='Delete Product'
+// 									icon={<DeleteIcon />}
+// 									colorScheme='red'
+// 									onClick={handleDeleteProduct}
+// 								/>
+// 							</HStack>
+// 						)}
+
+// 						{/* Agar user ek normal USER hai, toh Add to Cart button dikhao */}
+// 						{user.role === 'user' && (
+// 							<Button onClick={handleAddToCart} colorScheme='blue' w='full'>
+// 								Add to Cart
+// 							</Button>
+// 						)}
+// 					</Box>
+// 				)}
 // 			</Box>
 
+// 			{/* Update Modal (Yeh sirf admin ke liye kaam karega) */}
 // 			<Modal isOpen={isOpen} onClose={onClose}>
 // 				<ModalOverlay />
-
 // 				<ModalContent>
 // 					<ModalHeader>Update Product</ModalHeader>
 // 					<ModalCloseButton />
 // 					<ModalBody>
 // 						<VStack spacing={4}>
 // 							<Input
-// 								placeholder='Product Name'
-// 								name='name'
 // 								value={updatedProduct.name}
 // 								onChange={(e) => setUpdatedProduct({ ...updatedProduct, name: e.target.value })}
 // 							/>
 // 							<Input
-// 								placeholder='Price'
-// 								name='price'
 // 								type='number'
 // 								value={updatedProduct.price}
 // 								onChange={(e) => setUpdatedProduct({ ...updatedProduct, price: e.target.value })}
 // 							/>
 // 							<Input
-// 								placeholder='Image URL'
-// 								name='image'
 // 								value={updatedProduct.image}
 // 								onChange={(e) => setUpdatedProduct({ ...updatedProduct, image: e.target.value })}
 // 							/>
 // 						</VStack>
 // 					</ModalBody>
-
 // 					<ModalFooter>
-// 						<Button
-// 							colorScheme='blue'
-// 							mr={3}
-// 							onClick={() => handleUpdateProduct(product._id, updatedProduct)}
-// 						>
+// 						<Button colorScheme='blue' mr={3} onClick={handleUpdateProduct}>
 // 							Update
 // 						</Button>
 // 						<Button variant='ghost' onClick={onClose}>
@@ -312,4 +210,6 @@ export default ProductCard;
 // 		</Box>
 // 	);
 // };
+
 // export default ProductCard;
+

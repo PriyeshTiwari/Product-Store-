@@ -1,17 +1,26 @@
 import express from 'express';
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser"; // Import karo
 import { connectDB } from './config/db.js';
+import authRoutes from "./routes/auth.route.js"; // Import karo
 import path from 'path';
 import productRoutes from './routes/product.route.js';
+import cartRoutes from "./routes/cart.route.js";
+import orderRoutes from "./routes/order.route.js";
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
+app.use(cookieParser());
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
 app.use(express.json());
+app.use("/api/auth", authRoutes); // Yahan use karo
 app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
@@ -114,3 +123,11 @@ startServer();
 // 2022UCI8039
 //npm install mongodb@5.5
 //mongodb+srv://priyeshtiwari045:2022UCI8039@cluster0.16s2jad.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+
+
+
+
+
+    // "dev": "cross-env NODE_ENV=development backend/server.js",
+    // "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend",
+    // "start": "cross-env NODE_ENV=production node backend/server.js"
